@@ -1,0 +1,8 @@
+# Arquivos objeto (compilação intermediária)
+*.o
+
+# Executável final
+../output/q1
+
+# Arquivos de sistema do macOS
+.DS_Store
