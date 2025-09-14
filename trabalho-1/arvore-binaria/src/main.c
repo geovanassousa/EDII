@@ -180,6 +180,41 @@ static Apresentador* selecionar_apresentador_elegivel_por_tipo(TipoCategoria tip
     return selecionado;
 }
 
+/* coleta nomes distintos de categorias existentes em todas as streams */
+static int coletar_categorias_distintas_globais(char nomes[][TXT_GRD], int max) {
+    Stream *sVet[256];
+    Categoria *cVet[256];
+    int nStreams, nCats, i, j, k, tot, existe;
+
+    tot = 0;
+    nStreams = stream_enumerar(RAIZ, sVet, 256);
+
+    i = 0;
+    while (i < nStreams) {
+        nCats = cat_enumerar(sVet[i]->categorias, cVet, 256);
+        j = 0;
+        while (j < nCats) {
+            existe = 0;
+            k = 0;
+            while (k < tot && existe == 0) {
+                if (str_cmp_i(nomes[k], cVet[j]->nome) == 0) {
+                    existe = 1;
+                } else {
+                    k = k + 1;
+                }
+            }
+            if (existe == 0 && tot < max) {
+                strncpy(nomes[tot], cVet[j]->nome, TXT_GRD-1);
+                nomes[tot][TXT_GRD-1] = '\0';
+                tot = tot + 1;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return tot;
+}
+
 
 /* ------------------- MENU ------------------- */
 static void menu(void) {
@@ -367,13 +402,70 @@ static void acao_listar_programas_cat_stream(void) {
     }
 }
 
+/* (viii) Mostrar todas as streams que têm uma determinada categoria (por NOME da categoria) */
+static void acao_listar_streams_com_categoria(void) {
+    char cats[256][TXT_GRD];
+    int qtd, i, escolha, ok, idx;
+    char alvo[TXT_GRD];
+    Stream *sVet[256];
+    int nStreams, alguma;
+
+    printf("\n=== Streams que possuem uma determinada categoria ===\n");
+
+    qtd = coletar_categorias_distintas_globais(cats, 256);
+    if (qtd == 0) {
+        printf("(nao ha categorias cadastradas em nenhuma stream)\n\n");
+    } else {
+        /* lista categorias disponíveis para evitar erro de digitação */
+        printf("Categorias existentes (por nome):\n");
+        i = 0;
+        while (i < qtd) {
+            printf(" %d) %s\n", i + 1, cats[i]);
+            i = i + 1;
+        }
+
+        ok = 0; idx = -1;
+        while (ok == 0) {
+            printf("Escolha o numero da categoria: ");
+            if (scanf("%d", &escolha) != 1) {
+                int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+            } else {
+                if (escolha >= 1 && escolha <= qtd) {
+                    idx = escolha - 1;
+                    ok = 1;
+                } else {
+                    printf("Valor invalido.\n");
+                }
+            }
+            getchar();
+        }
+
+        if (idx >= 0) {
+            strncpy(alvo, cats[idx], sizeof(alvo)-1);
+            alvo[sizeof(alvo)-1] = '\0';
+
+            /* varre streams e imprime as que possuem a categoria 'alvo' */
+            nStreams = stream_enumerar(RAIZ, sVet, 256);
+            alguma = 0;
+            i = 0;
+            while (i < nStreams) {
+                /* checa se a stream tem a categoria pelo nome */
+                if (cat_existe(sVet[i]->categorias, alvo) == 1) {
+                    printf("- %s (%s)\n", sVet[i]->nome, sVet[i]->site);
+                    alguma = 1;
+                }
+                i = i + 1;
+            }
+            if (alguma == 0) {
+                printf("(nenhuma stream possui a categoria \"%s\")\n", alvo);
+            }
+            printf("\n");
+        }
+    }
+}
+
 
 /* ------------------- STUBS (vamos implementar depois) ------------------- */
-
-/* (viii) */
-static void acao_listar_streams_com_categoria(void) {
-    printf("\n(em desenvolvimento: listar streams que possuem uma categoria)\n\n");
-}
 
 /* (ix) */
 static void acao_listar_programas_por_dia_horario(void) {
