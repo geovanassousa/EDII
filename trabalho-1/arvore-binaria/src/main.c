@@ -257,28 +257,55 @@ static void rstrip(char *s) {
 static void _listar_prog_dia(Programa *r, int dia, int *tot) {
     if (r != NULL) {
         _listar_prog_dia(r->esq, dia, tot);
+
         if (r->diaSemana == dia || r->diaSemana == 0) {
-            /* usa o mesmo formato de impressao do resto do sistema */
-            /* se quiser prefixar com a categoria, faça isso na acao principal */
-            printf("- %s | %s | %d min | %s%s%s | %s | apres: %s\n",
-                   r->nome,
-                   r->periodicidade,
-                   r->tempoMin,
-                   r->horarioInicio,
-                   (r->diaSemana == 0 ? "" : " ("),
-                   (r->diaSemana == 0 ? "" :
-                        (r->diaSemana == 1 ? "Dom" :
-                        (r->diaSemana == 2 ? "Seg" :
-                        (r->diaSemana == 3 ? "Ter" :
-                        (r->diaSemana == 4 ? "Qua" :
-                        (r->diaSemana == 5 ? "Qui" :
-                        (r->diaSemana == 6 ? "Sex" : "Sab"))))))),
-                   (r->diaSemana == 0 ? "" : ")"),
-                   (r->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"),
-                   r->apresentador);
+            if (r->diaSemana == 0) {
+                /* Diario: nao mostra o dia */
+                printf("- %s | %s | %d min | %s | %s | apres: %s\n",
+                       r->nome, r->periodicidade, r->tempoMin, r->horarioInicio,
+                       (r->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"),
+                       r->apresentador);
+            } else {
+                char d[16];
+                dia_semana_texto(r->diaSemana, d, sizeof(d));
+                printf("- %s | %s | %d min | %s (%s) | %s | apres: %s\n",
+                       r->nome, r->periodicidade, r->tempoMin, r->horarioInicio, d,
+                       (r->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"),
+                       r->apresentador);
+            }
             *tot = *tot + 1;
         }
+
         _listar_prog_dia(r->dir, dia, tot);
+    }
+}
+
+/* enumera programas da BST em ordem alfabetica (in-order) */
+static void _prog_enumerar(Programa *r, Programa **vet, int max, int *qtd) {
+    if (r != NULL) {
+        _prog_enumerar(r->esq, vet, max, qtd);
+        if (*qtd < max) {
+            vet[*qtd] = r;
+            *qtd = *qtd + 1;
+        }
+        _prog_enumerar(r->dir, vet, max, qtd);
+    }
+}
+
+/* imprime uma linha-resumo do programa para a lista numerada */
+static void _print_programa_resumo(const Programa *p) {
+    if (p != NULL) {
+        if (p->diaSemana == 0) {
+            printf("   %s | %s | %s | %s\n",
+                   p->nome, p->periodicidade, p->horarioInicio,
+                   (p->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"));
+        } else {
+            char d[16];
+            dia_semana_texto(p->diaSemana, d, sizeof(d));
+            printf("   %s | %s | %s (%s) | %s\n",
+                   p->nome, p->periodicidade, p->horarioInicio, d,
+                   (p->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"));
+        }
     }
 }
 
@@ -665,11 +692,6 @@ static void acao_listar_programas_por_dia_semana_cat_stream(void) {
     }
 }
 
-
-/* ------------------- STUBS (vamos implementar depois) ------------------- */
-
-
-
 /* (xii) */
 static void acao_listar_apr_stream(void) {
     Stream *s; printf("\n=== Apresentadores de uma Stream ===\n");
@@ -687,10 +709,94 @@ static void acao_listar_apr_categoria(void) {
     }
 }
 
-/* (xiv) */
+/* (xiv) Mostrar os dados de um determinado programa de uma categoria de uma stream */
 static void acao_mostrar_dados_programa(void) {
-    printf("\n(em desenvolvimento: mostrar dados de um programa de uma categoria de uma stream)\n\n");
+    Stream *s;
+    Categoria *c;
+    Programa *vet[256];
+    int qtd, i, ok, escolha, idx;
+
+    printf("\n=== Dados de um Programa (Categoria de uma Stream) ===\n");
+
+    /* escolher stream */
+    s = selecionar_stream_por_numero();
+    if (s == NULL) {
+        printf("Cadastre uma stream primeiro.\n\n");
+    } else {
+        /* escolher categoria */
+        c = selecionar_categoria_por_numero(s->categorias);
+        if (c == NULL) {
+            printf("Cadastre categorias nessa stream primeiro.\n\n");
+        } else {
+            /* listar programas da categoria (in-order) para escolher por numero */
+            qtd = 0;
+            _prog_enumerar(c->raizProgramas, vet, 256, &qtd);
+
+            if (qtd == 0) {
+                printf("(nenhum programa nesta categoria)\n\n");
+            } else {
+                char tipoTxt[TXT_GRD];
+                tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
+
+                printf("Stream: %s | Categoria: %s (tipo: %s)\n", s->nome, c->nome, tipoTxt);
+                printf("Escolha o programa:\n");
+
+                i = 0;
+                while (i < qtd) {
+                    printf(" %d) ", i + 1);
+                    _print_programa_resumo(vet[i]);
+                    i = i + 1;
+                }
+
+                ok = 0; idx = -1;
+                while (ok == 0) {
+                    printf("Numero do programa: ");
+                    if (scanf("%d", &escolha) != 1) {
+                        int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+                    } else {
+                        if (escolha >= 1 && escolha <= qtd) {
+                            idx = escolha - 1;
+                            ok = 1;
+                        } else {
+                            printf("Valor invalido.\n");
+                        }
+                    }
+                    getchar();
+                }
+
+                if (idx >= 0) {
+                    Programa *p = vet[idx];
+                    char d[16]; char tipoTxt2[TXT_GRD];
+                    dia_semana_texto(p->diaSemana == 0 ? 0 : p->diaSemana, d, sizeof(d));
+                    tipo_categoria_texto(c->tipo, tipoTxt2, sizeof(tipoTxt2));
+
+                    printf("\n--- DADOS DO PROGRAMA ---\n");
+                    printf("Stream        : %s (%s)\n", s->nome, s->site);
+                    printf("Categoria     : %s (tipo: %s)\n", c->nome, tipoTxt2);
+                    printf("Nome          : %s\n", p->nome);
+                    printf("Periodicidade : %s\n", p->periodicidade);
+                    if (p->diaSemana == 0) {
+                        printf("Dia           : Diario\n");
+                    } else {
+                        printf("Dia           : %s\n", d);
+                    }
+                    printf("Horario inicio: %s\n", p->horarioInicio);
+                    printf("Duracao       : %d min\n", p->tempoMin);
+                    printf("Exibicao      : %s\n", (p->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"));
+                    printf("Apresentador  : %s\n", p->apresentador);
+                    printf("-------------------------\n\n");
+                }
+            }
+        }
+    }
 }
+
+
+
+
+/* ------------------- STUBS (vamos implementar depois) ------------------- */
+
+
 
 /* (xv) */
 static void acao_remover_programa(void) {
