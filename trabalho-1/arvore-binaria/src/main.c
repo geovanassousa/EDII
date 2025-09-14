@@ -252,6 +252,37 @@ static void rstrip(char *s) {
         n = n - 1;
     }
 }
+
+/* percorre a BST e imprime programas do dia (inclui Diarios = diaSemana 0) */
+static void _listar_prog_dia(Programa *r, int dia, int *tot) {
+    if (r != NULL) {
+        _listar_prog_dia(r->esq, dia, tot);
+        if (r->diaSemana == dia || r->diaSemana == 0) {
+            /* usa o mesmo formato de impressao do resto do sistema */
+            /* se quiser prefixar com a categoria, faça isso na acao principal */
+            printf("- %s | %s | %d min | %s%s%s | %s | apres: %s\n",
+                   r->nome,
+                   r->periodicidade,
+                   r->tempoMin,
+                   r->horarioInicio,
+                   (r->diaSemana == 0 ? "" : " ("),
+                   (r->diaSemana == 0 ? "" :
+                        (r->diaSemana == 1 ? "Dom" :
+                        (r->diaSemana == 2 ? "Seg" :
+                        (r->diaSemana == 3 ? "Ter" :
+                        (r->diaSemana == 4 ? "Qua" :
+                        (r->diaSemana == 5 ? "Qui" :
+                        (r->diaSemana == 6 ? "Sex" : "Sab"))))))),
+                   (r->diaSemana == 0 ? "" : ")"),
+                   (r->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"),
+                   r->apresentador);
+            *tot = *tot + 1;
+        }
+        _listar_prog_dia(r->dir, dia, tot);
+    }
+}
+
+
 /* ------------------- MENU ------------------- */
 static void menu(void) {
     printf("-------------------- MENU Q1 --------------------\n");
@@ -596,13 +627,48 @@ static void acao_listar_streams_por_tipo_categoria(void) {
     }
 }
 
+/* (xi) Mostrar todos os programas de um dia da semana de uma categoria de uma stream */
+static void acao_listar_programas_por_dia_semana_cat_stream(void) {
+    Stream *s;
+    Categoria *c;
+    int dia, total;
+    char diaTxt[16], tipoTxt[TXT_GRD];
+
+    printf("\n=== Programas por Dia da Semana de uma Categoria de uma Stream ===\n");
+
+    s = selecionar_stream_por_numero();
+    if (s == NULL) {
+        printf("Cadastre uma stream primeiro.\n\n");
+    } else {
+        c = selecionar_categoria_por_numero(s->categorias);
+        if (c == NULL) {
+            printf("Cadastre categorias nessa stream primeiro.\n\n");
+        } else {
+            dia = selecionar_dia_semana();
+            dia_semana_texto(dia, diaTxt, sizeof(diaTxt));
+            tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
+
+            printf("Stream: %s | Categoria: %s (tipo: %s) | Dia: %s\n",
+                   s->nome, c->nome, tipoTxt, diaTxt);
+
+            if (c->raizProgramas == NULL) {
+                printf("(nenhum programa nesta categoria)\n\n");
+            } else {
+                total = 0;
+                _listar_prog_dia(c->raizProgramas, dia, &total);
+                if (total == 0) {
+                    printf("(nenhum programa encontrado para esse dia)\n");
+                }
+                printf("\n");
+            }
+        }
+    }
+}
+
+
 /* ------------------- STUBS (vamos implementar depois) ------------------- */
 
 
-/* (xi) */
-static void acao_listar_programas_por_dia_semana_cat_stream(void) {
-    printf("\n(em desenvolvimento: listar programas por dia da semana de uma categoria de uma stream)\n\n");
-}
 
 /* (xii) */
 static void acao_listar_apr_stream(void) {
