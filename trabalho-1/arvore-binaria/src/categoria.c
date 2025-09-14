@@ -112,7 +112,6 @@ void cat_listar(Categoria *cabeca) {
     }
 }
 
-/* NOVO */
 int cat_enumerar(Categoria *cabeca, Categoria **vet, int max) {
     Categoria *p;
     int qtd = 0;

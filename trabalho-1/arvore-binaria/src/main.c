@@ -215,7 +215,43 @@ static int coletar_categorias_distintas_globais(char nomes[][TXT_GRD], int max) 
     return tot;
 }
 
+static int selecionar_dia_semana(void) {
+    int op, ok = 0;
+    printf("Dia da semana:\n 1) Dom\n 2) Seg\n 3) Ter\n 4) Qua\n 5) Qui\n 6) Sex\n 7) Sab\n");
+    while (ok == 0) {
+        printf("Escolha (1-7): ");
+        if (scanf("%d", &op) != 1) {
+            int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+        } else {
+            if (op >= 1 && op <= 7) {
+                ok = 1;
+            } else {
+                printf("Valor invalido.\n");
+            }
+        }
+        getchar();
+    }
+    return op;
+}
 
+static void dia_semana_texto(int d, char *t, int n) {
+    if (d == 1) strncpy(t, "Dom", n-1);
+    else if (d == 2) strncpy(t, "Seg", n-1);
+    else if (d == 3) strncpy(t, "Ter", n-1);
+    else if (d == 4) strncpy(t, "Qua", n-1);
+    else if (d == 5) strncpy(t, "Qui", n-1);
+    else if (d == 6) strncpy(t, "Sex", n-1);
+    else strncpy(t, "Sab", n-1);
+    t[n-1] = '\0';
+}
+
+static void rstrip(char *s) {
+    int n = (int)strlen(s);
+    while (n > 0 && (s[n-1] == ' ' || s[n-1] == '\t' || s[n-1] == '\r')) {
+        s[n-1] = '\0';
+        n = n - 1;
+    }
+}
 /* ------------------- MENU ------------------- */
 static void menu(void) {
     printf("-------------------- MENU Q1 --------------------\n");
@@ -279,10 +315,12 @@ static void acao_cadastrar_categoria(void) {
 }
 
 /* (iii) Cadastrar Programas */
+
 static void acao_cadastrar_programa(void) {
     Stream *s; Categoria *c; Apresentador *apr;
     char nomeProg[TXT_GRD], periodicidade[TXT_PEQ], hhmm[6];
     int tempoMin, inseriu = 0;
+    int diaSemSelecionado, diaSemArmazenado;
     TipoDemanda demanda;
     Programa *exist;
 
@@ -303,6 +341,15 @@ static void acao_cadastrar_programa(void) {
 
     printf("Periodicidade (ex.: Diario/Semanal/Mensal): ");
     scanf(" %31[^\n]", periodicidade); getchar();
+    rstrip(periodicidade); /* evita 'diario ' com espaco no fim */
+
+    /* Se for Diario, nao perguntamos o dia; guardamos 0 (=vale qualquer dia) */
+    if (str_cmp_i(periodicidade, "Diario") == 0 || str_cmp_i(periodicidade, "Diário") == 0) {
+        diaSemArmazenado = 0;
+    } else {
+        diaSemSelecionado = selecionar_dia_semana();
+        diaSemArmazenado = diaSemSelecionado;
+    }
 
     printf("Tempo (minutos): ");
     if (scanf("%d", &tempoMin) != 1) { int ch=0; while (ch!='\n' && ch!=EOF){ch=getchar();} tempoMin = 0; }
@@ -312,22 +359,19 @@ static void acao_cadastrar_programa(void) {
     scanf(" %5[^\n]", hhmm); getchar();
 
     if (selecionar_tipo_demanda(&demanda) == 1) {
-    char tipoTxt[TXT_GRD];
-    tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
+        char tipoTxt[TXT_GRD];
+        tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
+        if (apr_pode_apresentar(HEAD_APR, apr->nome, tipoTxt, s->nome) == 1) {
+            c->raizProgramas = prog_inserir(c->raizProgramas, nomeProg, periodicidade,
+                                            tempoMin, hhmm, diaSemArmazenado, demanda, apr->nome, &inseriu);
+            if (inseriu == 1) { printf("Programa cadastrado com sucesso.\n\n"); }
+            else { printf("Nao foi possivel cadastrar o programa.\n\n"); }
+        } else {
+            printf("Apresentador nao atende (categoria/stream).\n\n");
+        }
+    }
+}
 
-if (apr_pode_apresentar(HEAD_APR, apr->nome, tipoTxt, s->nome) == 1) {
-    c->raizProgramas = prog_inserir(c->raizProgramas, nomeProg, periodicidade,
-                                    tempoMin, hhmm, demanda, apr->nome, &inseriu);
-    if (inseriu == 1) {
-        printf("Programa cadastrado com sucesso.\n\n");
-    } else {
-        printf("Nao foi possivel cadastrar o programa.\n\n");
-    }
-} else {
-    printf("Apresentador nao atende (categoria/stream).\n\n");
-}
-    }
-}
 
 /* (iv) Cadastrar Apresentador */
 static void acao_cadastrar_apresentador(void) {
@@ -463,7 +507,56 @@ static void acao_listar_streams_com_categoria(void) {
         }
     }
 }
-/* (colocar o ix aqui) */
+/* (ix) Mostrar programas de uma stream em um dia e horário */
+static void _listar_match_prog(Programa *r, int dia, const char *hhmm, const char *nomeCat, int *tot) {
+    if (r != NULL) {
+        _listar_match_prog(r->esq, dia, hhmm, nomeCat, tot);
+        if ( (r->diaSemana == dia || r->diaSemana == 0) && strcmp(r->horarioInicio, hhmm) == 0 ) {
+            printf("[%s] - %s | %s | %d min | %s | %s | apres: %s\n",
+                   nomeCat, r->nome, r->periodicidade, r->tempoMin, r->horarioInicio,
+                   (r->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"),
+                   r->apresentador);
+            *tot = *tot + 1;
+        }
+        _listar_match_prog(r->dir, dia, hhmm, nomeCat, tot);
+    }
+}
+
+static void acao_listar_programas_por_dia_horario(void) {
+    Stream *s;
+    Categoria *cVet[256];
+    int nCats, i, total;
+    int dia;
+    char hhmm[6], diaTxt[16];
+
+    printf("\n=== Programas de uma Stream por Dia e Horario ===\n");
+
+    s = selecionar_stream_por_numero();
+    if (s == NULL) {
+        printf("Cadastre uma stream primeiro.\n\n");
+    } else {
+        dia = selecionar_dia_semana();
+        dia_semana_texto(dia, diaTxt, sizeof(diaTxt));
+
+        printf("Horario (HH:MM): ");
+        scanf(" %5[^\n]", hhmm); getchar();
+
+        printf("Stream: %s | Dia: %s | Horario: %s\n", s->nome, diaTxt, hhmm);
+
+        nCats = cat_enumerar(s->categorias, cVet, 256);
+        total = 0;
+        i = 0;
+        while (i < nCats) {
+            _listar_match_prog(cVet[i]->raizProgramas, dia, hhmm, cVet[i]->nome, &total);
+            i = i + 1;
+        }
+        if (total == 0) {
+            printf("(nenhum programa encontrado nesse dia/horario na stream)\n");
+        }
+        printf("\n");
+    }
+}
+
 
 /* (x) Mostrar todas as streams que tem um determinado TIPO de categoria */
 static void acao_listar_streams_por_tipo_categoria(void) {
@@ -505,10 +598,6 @@ static void acao_listar_streams_por_tipo_categoria(void) {
 
 /* ------------------- STUBS (vamos implementar depois) ------------------- */
 
-/* (ix)coloque no lugar certo dele, antes do X*/
-static void acao_listar_programas_por_dia_horario(void) {
-    printf("\n(em desenvolvimento: listar programas de uma stream por dia e horario)\n\n");
-}
 
 /* (xi) */
 static void acao_listar_programas_por_dia_semana_cat_stream(void) {

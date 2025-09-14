@@ -16,7 +16,7 @@ int  cat_existe(Categoria *cabeca, const char *nome);
 void cat_inserir_ordenado(Categoria **cabeca, const char *nome, TipoCategoria tipo, int *inseriu);
 void cat_listar(Categoria *cabeca);
 
-/* NOVO: enumera nós da lista circular (em ordem) para vetor; retorna quantidade */
+/*enumera nós da lista circular (em ordem) para vetor; retorna quantidade */
 int  cat_enumerar(Categoria *cabeca, Categoria **vet, int max);
 
 #endif
