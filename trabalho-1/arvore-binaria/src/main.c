@@ -334,12 +334,41 @@ static void acao_listar_categorias_stream(void) {
     else { stream_listar_categorias(RAIZ, s->nome); printf("\n"); }
 }
 
-/* ------------------- STUBS (vamos implementar depois) ------------------- */
-
-/* (vii) */
+/* (vii) Mostrar todos os programas de uma categoria de uma stream */
 static void acao_listar_programas_cat_stream(void) {
-    printf("\n(em desenvolvimento: listar programas de uma categoria de uma stream)\n\n");
+    Stream *s;
+    Categoria *c;
+    char tipoTxt[TXT_GRD];
+
+    printf("\n=== Programas de uma Categoria de uma Stream ===\n");
+
+    /* escolher a stream por número */
+    s = selecionar_stream_por_numero();
+    if (s == NULL) {
+        printf("Cadastre uma stream primeiro.\n\n");
+    } else {
+        /* escolher a categoria por número, dentre as da stream */
+        c = selecionar_categoria_por_numero(s->categorias);
+        if (c == NULL) {
+            printf("Cadastre categorias nessa stream primeiro.\n\n");
+        } else {
+            /* cabeçalho bonito com tipo + nome da categoria */
+            tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
+            printf("Stream: %s | Categoria: %s (tipo: %s)\n", s->nome, c->nome, tipoTxt);
+
+            if (c->raizProgramas == NULL) {
+                printf("(nenhum programa cadastrado nesta categoria)\n\n");
+            } else {
+                /* imprime BST em ordem alfabética pelo nome do programa */
+                prog_imprimir_inorder(c->raizProgramas);
+                printf("\n");
+            }
+        }
+    }
 }
+
+
+/* ------------------- STUBS (vamos implementar depois) ------------------- */
 
 /* (viii) */
 static void acao_listar_streams_com_categoria(void) {
