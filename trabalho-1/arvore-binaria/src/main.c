@@ -463,18 +463,51 @@ static void acao_listar_streams_com_categoria(void) {
         }
     }
 }
+/* (colocar o ix aqui) */
 
+/* (x) Mostrar todas as streams que tem um determinado TIPO de categoria */
+static void acao_listar_streams_por_tipo_categoria(void) {
+    TipoCategoria tipo;
+    char tipoTxt[TXT_GRD];
+    Stream *sVet[256];
+    Categoria *cVet[256];
+    int nStreams, nCats, i, j, impressa, totalImp;
+
+    printf("\n=== Streams por Tipo de Categoria ===\n");
+
+    if (selecionar_tipo_categoria(&tipo, tipoTxt, sizeof(tipoTxt)) == 1) {
+        nStreams = stream_enumerar(RAIZ, sVet, 256);
+        totalImp = 0;
+
+        i = 0;
+        while (i < nStreams) {
+            impressa = 0;
+            nCats = cat_enumerar(sVet[i]->categorias, cVet, 256);
+
+            j = 0;
+            while (j < nCats) {
+                if (cVet[j]->tipo == tipo && impressa == 0) {
+                    printf("- %s (%s)\n", sVet[i]->nome, sVet[i]->site);
+                    impressa = 1;            /* imprime cada stream no máximo 1 vez */
+                    totalImp = totalImp + 1;
+                }
+                j = j + 1;
+            }
+            i = i + 1;
+        }
+
+        if (totalImp == 0) {
+            printf("(nenhuma stream possui categoria do tipo: %s)\n", tipoTxt);
+        }
+        printf("\n");
+    }
+}
 
 /* ------------------- STUBS (vamos implementar depois) ------------------- */
 
-/* (ix) */
+/* (ix)coloque no lugar certo dele, antes do X*/
 static void acao_listar_programas_por_dia_horario(void) {
     printf("\n(em desenvolvimento: listar programas de uma stream por dia e horario)\n\n");
-}
-
-/* (x) */
-static void acao_listar_streams_por_tipo_categoria(void) {
-    printf("\n(em desenvolvimento: listar streams que tem um tipo de categoria)\n\n");
 }
 
 /* (xi) */
