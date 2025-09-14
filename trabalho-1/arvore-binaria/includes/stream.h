@@ -23,4 +23,7 @@ void stream_adicionar_categoria(Stream *raiz, const char *nomeStream,
                                 const char *nomeCat, TipoCategoria tipo, int *inseriu);
 void stream_listar_categorias(Stream *raiz, const char *nomeStream);
 
+/* NOVO: enumeração (coleta ponteiros em ordem alfabética num vetor) */
+int stream_enumerar(Stream *raiz, Stream **vet, int max);
+
 #endif

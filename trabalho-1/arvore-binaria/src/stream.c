@@ -91,3 +91,22 @@ void stream_listar_categorias(Stream *raiz, const char *nomeStream) {
         cat_listar(s->categorias);
     }
 }
+/* coleta em ordem (in-order) até "max" elementos; retorna quantidade coletada */
+static void _enum_inorder(Stream *r, Stream **vet, int max, int *qtd) {
+    if (r != NULL && *qtd < max) {
+        _enum_inorder(r->esq, vet, max, qtd);
+        if (*qtd < max) {
+            vet[*qtd] = r;
+            *qtd = *qtd + 1;
+        }
+        if (*qtd < max) {
+            _enum_inorder(r->dir, vet, max, qtd);
+        }
+    }
+}
+
+int stream_enumerar(Stream *raiz, Stream **vet, int max) {
+    int qtd = 0;
+    _enum_inorder(raiz, vet, max, &qtd);
+    return qtd;
+}

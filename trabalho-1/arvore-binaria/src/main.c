@@ -5,200 +5,433 @@
 #include "../includes/tipos.h"
 #include "../includes/utils.h"
 #include "../includes/stream.h"
+#include "../includes/categoria.h"
+#include "../includes/programa.h"
 #include "../includes/apresentador.h"
 
-/* Estruturas principais (globais do módulo) */
-static Stream *RAIZ = NULL;          /* BST de streams */
-static Apresentador *HEAD_APR = NULL;/* lista duplamente encadeada de apresentadores */
+/* Globais */
+static Stream *RAIZ = NULL;           /* BST de streams */
+static Apresentador *HEAD_APR = NULL; /* lista duplamente encadeada */
 
+/* ---------- helpers de seleção por número ---------- */
+
+static void tipo_categoria_texto(TipoCategoria t, char *dest, int n) {
+    if (t == TIPO_NOTICIAS) {
+        strncpy(dest, "Noticias", n-1);
+    } else if (t == TIPO_ESPORTE) {
+        strncpy(dest, "Esporte", n-1);
+    } else {
+        strncpy(dest, "Entretenimento", n-1);
+    }
+    dest[n-1] = '\0';
+}
+
+static Stream* selecionar_stream_por_numero(void) {
+    Stream *lista[256];
+    int qtd, i, ok, escolha;
+    Stream *selecionada = NULL;
+
+    qtd = stream_enumerar(RAIZ, lista, 256);
+    if (qtd == 0) {
+        printf("(nenhuma stream cadastrada)\n");
+        return NULL;
+    }
+
+    printf("\nStreams cadastradas:\n");
+    i = 0;
+    while (i < qtd) {
+        printf(" %d) %s (%s)\n", i + 1, lista[i]->nome, lista[i]->site);
+        i = i + 1;
+    }
+
+    ok = 0;
+    while (ok == 0) {
+        printf("Escolha o numero da stream: ");
+        if (scanf("%d", &escolha) != 1) {
+            int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+        } else {
+            if (escolha >= 1 && escolha <= qtd) {
+                selecionada = lista[escolha - 1];
+                ok = 1;
+            } else {
+                printf("Valor invalido.\n");
+            }
+        }
+        getchar();
+    }
+    return selecionada;
+}
+
+static Categoria* selecionar_categoria_por_numero(Categoria *cabeca) {
+    Categoria *vet[256];
+    int qtd, i, ok, escolha, idx;
+    Categoria *selecionada = NULL;
+
+    qtd = cat_enumerar(cabeca, vet, 256);
+    if (qtd == 0) { printf("(sem categorias)\n"); return NULL; }
+
+    printf("\nCategorias:\n");
+    i = 0;
+    while (i < qtd) {
+        printf(" %d) %s\n", i + 1, vet[i]->nome);
+        i = i + 1;
+    }
+
+    ok = 0; idx = -1;
+    while (ok == 0) {
+        printf("Escolha o numero da categoria: ");
+        if (scanf("%d", &escolha) != 1) {
+            int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+        } else {
+            if (escolha >= 1 && escolha <= qtd) {
+                idx = escolha - 1;
+                ok = 1;
+            } else {
+                printf("Valor invalido.\n");
+            }
+        }
+        getchar();
+    }
+    if (idx >= 0) { selecionada = vet[idx]; }
+    return selecionada;
+}
+
+
+static int selecionar_tipo_categoria(TipoCategoria *outTipo, char *outNome, int outTam) {
+    int op, valido, t;
+    printf("Tipo de categoria:\n 1) Noticias\n 2) Esporte\n 3) Entretenimento\n");
+    valido = 0;
+    while (valido == 0) {
+        printf("Escolha (1-3): ");
+        if (scanf("%d", &op) != 1) {
+            int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+        } else {
+            t = parse_categoria_num(op);
+            if (t == 0) {
+                printf("Opcao invalida.\n");
+            } else {
+                *outTipo = (TipoCategoria) t;
+                if (t == TIPO_NOTICIAS) strncpy(outNome, "Noticias", outTam-1);
+                else if (t == TIPO_ESPORTE) strncpy(outNome, "Esporte", outTam-1);
+                else strncpy(outNome, "Entretenimento", outTam-1);
+                outNome[outTam-1] = '\0';
+                valido = 1;
+            }
+        }
+        getchar();
+    }
+    return 1;
+}
+
+static int selecionar_tipo_demanda(TipoDemanda *out) {
+    int op, ok = 0;
+    printf("Demanda:\n 1) Ao vivo\n 2) Sob demanda\n");
+    while (ok == 0) {
+        printf("Escolha (1-2): ");
+        if (scanf("%d", &op) != 1) {
+            int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+        } else {
+            if (op == 1) { *out = DEMANDA_AO_VIVO; ok = 1; }
+            else if (op == 2) { *out = DEMANDA_SOB_DEMANDA; ok = 1; }
+            else { printf("Opcao invalida.\n"); }
+        }
+        getchar();
+    }
+    return 1;
+}
+
+static Apresentador* selecionar_apresentador_elegivel_por_tipo(TipoCategoria tipoCat, const char *nomeStream) {
+    Apresentador *vet[256];
+    int qtd, i, escolha, ok, idx;
+    Apresentador *selecionado = NULL;
+    char tipoTxt[TXT_GRD];
+
+    tipo_categoria_texto(tipoCat, tipoTxt, sizeof(tipoTxt));
+
+    qtd = apr_enumerar_elegiveis(HEAD_APR, tipoTxt, nomeStream, vet, 256);
+    if (qtd == 0) {
+        printf("(nenhum apresentador elegivel; cadastre primeiro)\n");
+        return NULL;
+    }
+
+    printf("\nApresentadores elegiveis (cat: %s, stream: %s):\n", tipoTxt, nomeStream);
+    i = 0;
+    while (i < qtd) {
+        printf(" %d) %s\n", i + 1, vet[i]->nome);
+        i = i + 1;
+    }
+
+    ok = 0; idx = -1;
+    while (ok == 0) {
+        printf("Escolha o numero do apresentador: ");
+        if (scanf("%d", &escolha) != 1) {
+            int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+        } else {
+            if (escolha >= 1 && escolha <= qtd) {
+                idx = escolha - 1;
+                ok = 1;
+            } else {
+                printf("Valor invalido.\n");
+            }
+        }
+        getchar();
+    }
+    if (idx >= 0) { selecionado = vet[idx]; }
+    return selecionado;
+}
+
+
+/* ------------------- MENU ------------------- */
 static void menu(void) {
     printf("-------------------- MENU Q1 --------------------\n");
     printf(" 1 - Cadastrar Stream\n");
-    printf(" 2 - Cadastrar Categoria em uma Stream\n");
-    printf(" 3 - Cadastrar Apresentador\n");
-    printf(" 5 - Mostrar todas as Streams\n");
-    printf(" 6 - Mostrar Categorias de uma Stream\n");
-    printf("12 - Mostrar Apresentadores de uma Stream\n");
-    printf("13 - Mostrar Apresentadores de uma Categoria\n");
+    printf(" 2 - Cadastrar Categorias\n");
+    printf(" 3 - Cadastrar Programas\n");
+    printf(" 4 - Cadastrar Apresentador\n");
+    printf(" 5 - Mostrar todas as streams cadastradas\n");
+    printf(" 6 - Mostrar todas as categorias de uma stream\n");
+    printf(" 7 - Mostrar todos os programas de uma categoria de uma stream\n");
+    printf(" 8 - Mostrar todas as streams que tem uma categoria\n");
+    printf(" 9 - Mostrar programas de uma stream em um dia e horario\n");
+    printf("10 - Mostrar streams que tem um tipo de categoria\n");
+    printf("11 - Mostrar programas de um dia da semana de uma categoria de uma stream\n");
+    printf("12 - Mostrar apresentadores de uma stream\n");
+    printf("13 - Mostrar apresentadores de uma categoria (independente da stream)\n");
+    printf("14 - Mostrar dados de um programa de uma categoria de uma stream\n");
+    printf("15 - Remover programa de uma categoria de uma stream\n");
+    printf("16 - Remover categoria de uma stream (apenas se vazia)\n");
+    printf("17 - Alterar a stream atual de um apresentador (com restricoes)\n");
     printf(" 0 - SAIR\n");
     printf("-------------------------------------------------\n");
     printf("Escolha uma opcao: ");
 }
 
-/* ------------------- ACOES ------------------- */
+/* ------------------- ACOES IMPLEMENTADAS ------------------- */
 
+/* (i) Cadastrar Stream */
 static void acao_cadastrar_stream(void) {
-    char nome[TXT_GRD];
-    char site[TXT_GRD];
+    char nome[TXT_GRD], site[TXT_GRD];
     int inseriu = 0;
 
     printf("\n=== Cadastrar Stream ===\n");
-    printf("Nome da stream: ");
-    scanf(" %127[^\n]", nome);
-    getchar(); /* consome '\n' */
-
-    printf("Site da stream: ");
-    scanf(" %127[^\n]", site);
-    getchar();
+    printf("Nome da stream: "); scanf(" %127[^\n]", nome); getchar();
+    printf("Site da stream: "); scanf(" %127[^\n]", site); getchar();
 
     if (stream_buscar(RAIZ, nome) != NULL) {
         printf("Ja existe uma stream com esse nome.\n\n");
     } else {
         RAIZ = stream_inserir(RAIZ, nome, site, &inseriu);
-        if (inseriu == 1) {
-            printf("Stream cadastrada.\n\n");
-        } else {
-            printf("Nao foi possivel cadastrar.\n\n");
-        }
+        if (inseriu == 1) printf("Stream cadastrada.\n\n");
+        else printf("Nao foi possivel cadastrar.\n\n");
     }
 }
 
-static void acao_listar_streams(void) {
-    printf("\n=== Todas as Streams ===\n");
-    if (RAIZ == NULL) {
-        printf("(nenhuma stream cadastrada)\n\n");
-    } else {
-        stream_imprimir_inorder(RAIZ);
-        printf("\n");
-    }
-}
-
+/* (ii) Cadastrar Categorias */
 static void acao_cadastrar_categoria(void) {
-    char nomeStream[TXT_GRD];
-    char nomeCat[TXT_GRD];
-    int tipoEscolha;
-    int tipoNum;
-    int inseriu = 0;
+    Stream *s; char nomeCat[TXT_GRD]; TipoCategoria tipo; char nomeTipo[TXT_GRD]; int inseriu = 0;
 
     printf("\n=== Cadastrar Categoria ===\n");
-    printf("Stream (nome exato): ");
-    scanf(" %127[^\n]", nomeStream);
-    getchar();
-
-    if (stream_buscar(RAIZ, nomeStream) == NULL) {
-        printf("Stream nao encontrada. Cadastre a stream primeiro.\n\n");
-    } else {
-        printf("Nome da categoria: ");
-        scanf(" %127[^\n]", nomeCat);
-        getchar();
-
-        printf("Tipo (1=Noticias, 2=Esporte, 3=Entretenimento): ");
-        if (scanf("%d", &tipoEscolha) != 1) {
-            /* entrada invalida; limpa stdin */
-            int ch = 0;
-            while (ch != '\n' && ch != EOF) { ch = getchar(); }
-            printf("Tipo invalido.\n\n");
-            return;
-        }
-        getchar(); /* consome '\n' */
-
-        tipoNum = parse_categoria_num(tipoEscolha);
-        if (tipoNum == 0) {
-            printf("Tipo invalido.\n\n");
-        } else {
-            stream_adicionar_categoria(RAIZ, nomeStream, nomeCat, (TipoCategoria)tipoNum, &inseriu);
-            if (inseriu == 1) {
-                printf("Categoria cadastrada.\n\n");
-            } else {
-                printf("Nao foi possivel cadastrar (duplicada ou erro).\n\n");
-            }
+    s = selecionar_stream_por_numero();
+    if (s == NULL) { printf("Cadastre uma stream primeiro.\n\n"); }
+    else {
+        printf("Nome da categoria: "); scanf(" %127[^\n]", nomeCat); getchar();
+        if (selecionar_tipo_categoria(&tipo, nomeTipo, sizeof(nomeTipo)) == 1) {
+            stream_adicionar_categoria(RAIZ, s->nome, nomeCat, tipo, &inseriu);
+            if (inseriu == 1) printf("Categoria cadastrada em \"%s\".\n\n", s->nome);
+            else printf("Nao foi possivel cadastrar (duplicada ou erro).\n\n");
         }
     }
 }
 
-static void acao_listar_categorias(void) {
-    char nomeStream[TXT_GRD];
-    printf("\n=== Categorias de uma Stream ===\n");
-    printf("Stream (nome exato): ");
-    scanf(" %127[^\n]", nomeStream);
+/* (iii) Cadastrar Programas */
+static void acao_cadastrar_programa(void) {
+    Stream *s; Categoria *c; Apresentador *apr;
+    char nomeProg[TXT_GRD], periodicidade[TXT_PEQ], hhmm[6];
+    int tempoMin, inseriu = 0;
+    TipoDemanda demanda;
+    Programa *exist;
+
+    printf("\n=== Cadastrar Programa ===\n");
+    s = selecionar_stream_por_numero();
+    if (s == NULL) { printf("Cadastre uma stream primeiro.\n\n"); return; }
+
+    c = selecionar_categoria_por_numero(s->categorias);
+    if (c == NULL) { printf("Cadastre categorias nessa stream primeiro.\n\n"); return; }
+
+    apr = selecionar_apresentador_elegivel_por_tipo(c->tipo, s->nome);
+    if (apr == NULL) { printf("Nenhum apresentador elegivel.\n\n"); return; }
+
+    printf("Nome do programa: "); scanf(" %127[^\n]", nomeProg); getchar();
+
+    exist = prog_buscar(c->raizProgramas, nomeProg);
+    if (exist != NULL) { printf("Programa ja existe nesta categoria.\n\n"); return; }
+
+    printf("Periodicidade (ex.: Diario/Semanal/Mensal): ");
+    scanf(" %31[^\n]", periodicidade); getchar();
+
+    printf("Tempo (minutos): ");
+    if (scanf("%d", &tempoMin) != 1) { int ch=0; while (ch!='\n' && ch!=EOF){ch=getchar();} tempoMin = 0; }
     getchar();
-    stream_listar_categorias(RAIZ, nomeStream);
-    printf("\n");
+
+    printf("Horario de inicio (HH:MM): ");
+    scanf(" %5[^\n]", hhmm); getchar();
+
+    if (selecionar_tipo_demanda(&demanda) == 1) {
+    char tipoTxt[TXT_GRD];
+    tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
+
+if (apr_pode_apresentar(HEAD_APR, apr->nome, tipoTxt, s->nome) == 1) {
+    c->raizProgramas = prog_inserir(c->raizProgramas, nomeProg, periodicidade,
+                                    tempoMin, hhmm, demanda, apr->nome, &inseriu);
+    if (inseriu == 1) {
+        printf("Programa cadastrado com sucesso.\n\n");
+    } else {
+        printf("Nao foi possivel cadastrar o programa.\n\n");
+    }
+} else {
+    printf("Apresentador nao atende (categoria/stream).\n\n");
+}
+    }
 }
 
+/* (iv) Cadastrar Apresentador */
 static void acao_cadastrar_apresentador(void) {
-    char nome[TXT_GRD];
-    char categoria[TXT_GRD];
-    char streamAtual[TXT_GRD];
-    int inseriu = 0;
+    char nome[TXT_GRD], categoriaTxt[TXT_GRD], nomeTipo[TXT_GRD];
+    TipoCategoria tipo; Stream *s; int inseriu = 0;
 
     printf("\n=== Cadastrar Apresentador ===\n");
-    printf("Nome do apresentador: ");
-    scanf(" %127[^\n]", nome);
-    getchar();
+    printf("Nome do apresentador: "); scanf(" %127[^\n]", nome); getchar();
 
     if (apr_existe_nome(HEAD_APR, nome) == 1) {
         printf("Ja existe apresentador com esse nome.\n\n");
     } else {
-        printf("Categoria (texto exato, ex.: Noticias/Esporte/Entretenimento): ");
-        scanf(" %127[^\n]", categoria);
-        getchar();
-
-        printf("Stream atual (deve existir): ");
-        scanf(" %127[^\n]", streamAtual);
-        getchar();
-
-        if (stream_buscar(RAIZ, streamAtual) == NULL) {
-            printf("Stream nao encontrada. Cadastre a stream primeiro.\n\n");
-        } else {
-            apr_inserir_ordenado(&HEAD_APR, nome, categoria, streamAtual, &inseriu);
-            if (inseriu == 1) {
-                printf("Apresentador cadastrado.\n\n");
-            } else {
-                printf("Nao foi possivel cadastrar.\n\n");
-            }
+        if (selecionar_tipo_categoria(&tipo, nomeTipo, sizeof(nomeTipo)) == 1) {
+            strncpy(categoriaTxt, nomeTipo, sizeof(categoriaTxt)-1);
+            categoriaTxt[sizeof(categoriaTxt)-1] = '\0';
+        }
+        s = selecionar_stream_por_numero();
+        if (s == NULL) { printf("Cadastre uma stream primeiro.\n\n"); }
+        else {
+            apr_inserir_ordenado(&HEAD_APR, nome, categoriaTxt, s->nome, &inseriu);
+            if (inseriu == 1) printf("Apresentador cadastrado (cat: %s, stream: %s).\n\n", categoriaTxt, s->nome);
+            else printf("Nao foi possivel cadastrar.\n\n");
         }
     }
 }
 
-static void acao_listar_apr_stream(void) {
-    char s[TXT_GRD];
-    printf("\n=== Apresentadores de uma Stream ===\n");
-    printf("Stream (nome exato): ");
-    scanf(" %127[^\n]", s);
-    getchar();
-    apr_listar_da_stream(HEAD_APR, s);
-    printf("\n");
+/* (v) Mostrar todas as streams */
+static void acao_listar_streams(void) {
+    printf("\n=== Todas as Streams ===\n");
+    if (RAIZ == NULL) printf("(nenhuma stream cadastrada)\n\n");
+    else { stream_imprimir_inorder(RAIZ); printf("\n"); }
 }
 
+/* (vi) Mostrar categorias de uma stream */
+static void acao_listar_categorias_stream(void) {
+    Stream *s; printf("\n=== Categorias de uma Stream ===\n");
+    s = selecionar_stream_por_numero();
+    if (s == NULL) { printf("Cadastre uma stream primeiro.\n\n"); }
+    else { stream_listar_categorias(RAIZ, s->nome); printf("\n"); }
+}
+
+/* ------------------- STUBS (vamos implementar depois) ------------------- */
+
+/* (vii) */
+static void acao_listar_programas_cat_stream(void) {
+    printf("\n(em desenvolvimento: listar programas de uma categoria de uma stream)\n\n");
+}
+
+/* (viii) */
+static void acao_listar_streams_com_categoria(void) {
+    printf("\n(em desenvolvimento: listar streams que possuem uma categoria)\n\n");
+}
+
+/* (ix) */
+static void acao_listar_programas_por_dia_horario(void) {
+    printf("\n(em desenvolvimento: listar programas de uma stream por dia e horario)\n\n");
+}
+
+/* (x) */
+static void acao_listar_streams_por_tipo_categoria(void) {
+    printf("\n(em desenvolvimento: listar streams que tem um tipo de categoria)\n\n");
+}
+
+/* (xi) */
+static void acao_listar_programas_por_dia_semana_cat_stream(void) {
+    printf("\n(em desenvolvimento: listar programas por dia da semana de uma categoria de uma stream)\n\n");
+}
+
+/* (xii) */
+static void acao_listar_apr_stream(void) {
+    Stream *s; printf("\n=== Apresentadores de uma Stream ===\n");
+    s = selecionar_stream_por_numero();
+    if (s == NULL) { printf("Cadastre uma stream primeiro.\n\n"); }
+    else { apr_listar_da_stream(HEAD_APR, s->nome); printf("\n"); }
+}
+
+/* (xiii) */
 static void acao_listar_apr_categoria(void) {
-    char c[TXT_GRD];
+    TipoCategoria tipo; char nomeTipo[TXT_GRD];
     printf("\n=== Apresentadores de uma Categoria ===\n");
-    printf("Categoria (texto exato): ");
-    scanf(" %127[^\n]", c);
-    getchar();
-    apr_listar_da_categoria(HEAD_APR, c);
-    printf("\n");
+    if (selecionar_tipo_categoria(&tipo, nomeTipo, sizeof(nomeTipo)) == 1) {
+        apr_listar_da_categoria(HEAD_APR, nomeTipo); printf("\n");
+    }
+}
+
+/* (xiv) */
+static void acao_mostrar_dados_programa(void) {
+    printf("\n(em desenvolvimento: mostrar dados de um programa de uma categoria de uma stream)\n\n");
+}
+
+/* (xv) */
+static void acao_remover_programa(void) {
+    printf("\n(em desenvolvimento: remover programa de uma categoria de uma stream)\n\n");
+}
+
+/* (xvi) */
+static void acao_remover_categoria_se_vazia(void) {
+    printf("\n(em desenvolvimento: remover categoria se nao tiver programas)\n\n");
+}
+
+/* (xvii) */
+static void acao_alterar_stream_atual_apresentador(void) {
+    printf("\n(em desenvolvimento: alterar stream atual do apresentador com as restricoes)\n\n");
 }
 
 /* ------------------- MAIN ------------------- */
-
 int main(void) {
     int opcao = -1;
 
-    printf("Trabalho ED2 - Q1 (Streams + Categorias + Apresentadores)\n\n");
+    printf("Trabalho ED2 - Q1 (menu alinhado ao enunciado)\n\n");
 
     do {
         menu();
         if (scanf("%d", &opcao) != 1) {
-            /* limpa stdin em caso de lixo */
-            int ch = 0;
-            while (ch != '\n' && ch != EOF) { ch = getchar(); }
+            int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
             opcao = -1;
         }
-        getchar(); /* consome '\n' do número */
+        getchar();
 
         switch (opcao) {
-            case 1:  acao_cadastrar_stream();       break;
-            case 2:  acao_cadastrar_categoria();    break;
-            case 3:  acao_cadastrar_apresentador(); break;
-            case 5:  acao_listar_streams();         break;
-            case 6:  acao_listar_categorias();      break;
-            case 12: acao_listar_apr_stream();      break;
-            case 13: acao_listar_apr_categoria();   break;
+            case 1:  acao_cadastrar_stream();                      break; /* i */
+            case 2:  acao_cadastrar_categoria();                   break; /* ii */
+            case 3:  acao_cadastrar_programa();                    break; /* iii */
+            case 4:  acao_cadastrar_apresentador();                break; /* iv */
+            case 5:  acao_listar_streams();                        break; /* v */
+            case 6:  acao_listar_categorias_stream();              break; /* vi */
+            case 7:  acao_listar_programas_cat_stream();           break; /* vii */
+            case 8:  acao_listar_streams_com_categoria();          break; /* viii */
+            case 9:  acao_listar_programas_por_dia_horario();      break; /* ix */
+            case 10: acao_listar_streams_por_tipo_categoria();     break; /* x */
+            case 11: acao_listar_programas_por_dia_semana_cat_stream(); break; /* xi */
+            case 12: acao_listar_apr_stream();                     break; /* xii */
+            case 13: acao_listar_apr_categoria();                  break; /* xiii */
+            case 14: acao_mostrar_dados_programa();                break; /* xiv */
+            case 15: acao_remover_programa();                      break; /* xv */
+            case 16: acao_remover_categoria_se_vazia();            break; /* xvi */
+            case 17: acao_alterar_stream_atual_apresentador();     break; /* xvii */
             case 0:
                 printf("Saindo do programa...\n");
-                /* aqui futuramente liberamos memória (free) */
                 break;
             default:
                 printf("Opcao invalida, tente novamente!\n\n");
