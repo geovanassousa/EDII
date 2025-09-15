@@ -23,6 +23,7 @@ Programa* prog_buscar(Programa *raiz, const char *nome);
 
 Programa* prog_inserir(Programa *raiz, const char *nome, const char *period, int tempoMin,
                        const char *hhmm, int diaSemana, TipoDemanda demanda, const char *apres, int *inseriu);
+Programa* prog_remover(Programa *raiz, const char *nome, int *removeu);
 
 void      prog_imprimir_inorder(Programa *raiz);
 

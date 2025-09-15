@@ -97,3 +97,69 @@ void prog_imprimir_inorder(Programa *raiz) {
         prog_imprimir_inorder(raiz->dir);
     }
 }
+/* menor nó (mais à esquerda) da subárvore; sem return dentro de laço */
+static Programa* _min_node(Programa *r) {
+    Programa *p = r;
+    if (p != NULL) {
+        while (p->esq != NULL) {
+            p = p->esq;
+        }
+    }
+    return p;
+}
+
+/* remove por nome (case-insensitive) e devolve nova raiz; ajusta *removeu=1 se remover */
+Programa* prog_remover(Programa *raiz, const char *nome, int *removeu) {
+    int cmp;
+    if (removeu != NULL) { *removeu = 0; }
+    if (raiz == NULL) { return NULL; }
+
+    cmp = str_cmp_i(nome, raiz->nome);
+    if (cmp < 0) {
+        raiz->esq = prog_remover(raiz->esq, nome, removeu);
+    } else if (cmp > 0) {
+        raiz->dir = prog_remover(raiz->dir, nome, removeu);
+    } else {
+       
+        if (raiz->esq == NULL && raiz->dir == NULL) {
+            free(raiz);
+            if (removeu != NULL) { *removeu = 1; }
+            return NULL;
+        } else if (raiz->esq == NULL) {
+            Programa *tmp = raiz->dir;
+            free(raiz);
+            if (removeu != NULL) { *removeu = 1; }
+            return tmp;
+        } else if (raiz->dir == NULL) {
+            Programa *tmp = raiz->esq;
+            free(raiz);
+            if (removeu != NULL) { *removeu = 1; }
+            return tmp;
+        } else {
+            
+            /* dois filhos: copia o sucessor (menor da direita) e remove o sucessor */
+            Programa *succ = _min_node(raiz->dir);
+
+            strncpy(raiz->nome, succ->nome, sizeof(raiz->nome)-1);
+            raiz->nome[sizeof(raiz->nome)-1] = '\0';
+
+            strncpy(raiz->periodicidade, succ->periodicidade, sizeof(raiz->periodicidade)-1);
+            raiz->periodicidade[sizeof(raiz->periodicidade)-1] = '\0';
+
+            raiz->tempoMin = succ->tempoMin;
+
+            strncpy(raiz->horarioInicio, succ->horarioInicio, sizeof(raiz->horarioInicio)-1);
+            raiz->horarioInicio[sizeof(raiz->horarioInicio)-1] = '\0';
+
+            raiz->diaSemana = succ->diaSemana;
+            raiz->demanda = succ->demanda;
+
+            strncpy(raiz->apresentador, succ->apresentador, sizeof(raiz->apresentador)-1);
+            raiz->apresentador[sizeof(raiz->apresentador)-1] = '\0';
+
+            /* remove o sucessor pelo nome (que agora está duplicado na raiz) */
+            raiz->dir = prog_remover(raiz->dir, succ->nome, removeu);
+        }
+    }
+    return raiz;
+}

@@ -791,17 +791,70 @@ static void acao_mostrar_dados_programa(void) {
     }
 }
 
+/* (xv) Remover programa de uma categoria de uma stream */
+static void acao_remover_programa(void) {
+    Stream *s;
+    Categoria *c;
+    Programa *vet[256];
+    int qtd, i, ok, escolha, idx, removeu;
+
+    printf("\n=== Remover Programa de uma Categoria de uma Stream ===\n");
+
+    s = selecionar_stream_por_numero();
+    if (s == NULL) {
+        printf("Cadastre uma stream primeiro.\n\n");
+    } else {
+        c = selecionar_categoria_por_numero(s->categorias);
+        if (c == NULL) {
+            printf("Cadastre categorias nessa stream primeiro.\n\n");
+        } else {
+            qtd = 0;
+            _prog_enumerar(c->raizProgramas, vet, 256, &qtd);
+
+            if (qtd == 0) {
+                printf("(nenhum programa nesta categoria)\n\n");
+            } else {
+                printf("Escolha o programa para remover:\n");
+                i = 0;
+                while (i < qtd) {
+                    printf(" %d) ", i + 1);
+                    _print_programa_resumo(vet[i]);
+                    i = i + 1;
+                }
+
+                ok = 0; idx = -1;
+                while (ok == 0) {
+                    printf("Numero do programa: ");
+                    if (scanf("%d", &escolha) != 1) {
+                        int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+                    } else {
+                        if (escolha >= 1 && escolha <= qtd) {
+                            idx = escolha - 1;
+                            ok = 1;
+                        } else {
+                            printf("Valor invalido.\n");
+                        }
+                    }
+                    getchar();
+                }
+
+                removeu = 0;
+                c->raizProgramas = prog_remover(c->raizProgramas, vet[idx]->nome, &removeu);
+                if (removeu == 1) {
+                    printf("Programa removido.\n\n");
+                } else {
+                    printf("Nao foi possivel remover.\n\n");
+                }
+            }
+        }
+    }
+}
+
 
 
 
 /* ------------------- STUBS (vamos implementar depois) ------------------- */
 
-
-
-/* (xv) */
-static void acao_remover_programa(void) {
-    printf("\n(em desenvolvimento: remover programa de uma categoria de uma stream)\n\n");
-}
 
 /* (xvi) */
 static void acao_remover_categoria_se_vazia(void) {
