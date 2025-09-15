@@ -127,3 +127,76 @@ int cat_enumerar(Categoria *cabeca, Categoria **vet, int max) {
     }
     return qtd;
 }
+
+#include "../includes/utils.h"  /* str_cmp_i */
+
+/* Remove uma categoria pelo NOME, apenas se estiver sem programas.
+   Lista circular simples, sem return/break/continue dentro de lacos. */
+void cat_remover_se_vazia(Categoria **cabeca, const char *nome, int *removeu) {
+    Categoria *head, *cur, *prev, *tail;
+    int done, found, podeRemover, la;
+
+    if (removeu != NULL) { *removeu = 0; }
+    if (cabeca == NULL) { return; }
+
+    head = *cabeca;
+    if (head == NULL) { return; }
+
+    prev = NULL;
+    cur = head;
+    done = 0;
+    found = 0;
+
+    /* percorre até voltar no head */
+    while (done == 0) {
+        if (str_cmp_i(cur->nome, nome) == 0) {
+            found = 1;
+            done = 1;
+        } else {
+            prev = cur;
+            cur = cur->prox;  /* campo prox: lista circular simples */
+            if (cur == head) {
+                done = 1;
+            }
+        }
+    }
+
+    if (found == 1) {
+        if (cur->raizProgramas == NULL) {
+            podeRemover = 1;
+        } else {
+            podeRemover = 0;
+        }
+
+        if (podeRemover == 1) {
+            /* caso 1: lista com 1 nó */
+            if (cur->prox == cur) {
+                *cabeca = NULL;
+            } else if (prev == NULL) {
+                /* removendo o head; achar o tail e religar */
+                tail = cur;
+                la = 0;
+                while (la == 0) {
+                    if (tail->prox == cur) {
+                        la = 1;
+                    } else {
+                        tail = tail->prox;
+                    }
+                }
+                *cabeca = cur->prox;
+                tail->prox = *cabeca;
+            } else {
+                /* removendo nó do meio/final */
+                prev->prox = cur->prox;
+                if (cur == *cabeca) {
+                    *cabeca = cur->prox;
+                }
+            }
+            free(cur);
+            if (removeu != NULL) { *removeu = 1; }
+        } else {
+            if (removeu != NULL) { *removeu = 0; }
+        }
+    }
+}
+

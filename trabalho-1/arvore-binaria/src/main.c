@@ -850,16 +850,39 @@ static void acao_remover_programa(void) {
     }
 }
 
+/* (xvi) Remover uma categoria de uma stream (apenas se vazia) */
+static void acao_remover_categoria_se_vazia(void) {
+    Stream *s;
+    Categoria *c;
+    int removeu;
 
+    printf("\n=== Remover Categoria de uma Stream (apenas se vazia) ===\n");
 
+    s = selecionar_stream_por_numero();
+    if (s == NULL) {
+        printf("Cadastre uma stream primeiro.\n\n");
+    } else {
+        c = selecionar_categoria_por_numero(s->categorias);
+        if (c == NULL) {
+            printf("Cadastre categorias nessa stream primeiro.\n\n");
+        } else {
+            if (c->raizProgramas != NULL) {
+                printf("Nao pode remover: a categoria \"%s\" possui programas cadastrados.\n\n", c->nome);
+            } else {
+                removeu = 0;
+                cat_remover_se_vazia(&s->categorias, c->nome, &removeu);
+                if (removeu == 1) {
+                    printf("Categoria \"%s\" removida da stream \"%s\".\n\n", c->nome, s->nome);
+                } else {
+                    printf("Nao foi possivel remover a categoria.\n\n");
+                }
+            }
+        }
+    }
+}
 
 /* ------------------- STUBS (vamos implementar depois) ------------------- */
 
-
-/* (xvi) */
-static void acao_remover_categoria_se_vazia(void) {
-    printf("\n(em desenvolvimento: remover categoria se nao tiver programas)\n\n");
-}
 
 /* (xvii) */
 static void acao_alterar_stream_atual_apresentador(void) {
