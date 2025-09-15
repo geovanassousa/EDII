@@ -68,7 +68,7 @@ static Categoria* selecionar_categoria_por_numero(Categoria *cabeca) {
     Categoria *selecionada = NULL;
 
     qtd = cat_enumerar(cabeca, vet, 256);
-    if (qtd == 0) { printf("(sem categorias)\n"); return NULL; }
+    if (qtd == 0) { printf("sem categorias !\n"); return NULL; }
 
     printf("\nCategorias:\n");
     i = 0;
@@ -309,6 +309,68 @@ static void _print_programa_resumo(const Programa *p) {
     }
 }
 
+/* enumera todos os apresentadores da lista duplamente encadeada */
+static int apr_enumerar_todos(Apresentador *head, Apresentador **vet, int max) {
+    int n = 0;
+    Apresentador *p = head;
+    while (p != NULL && n < max) {
+        vet[n] = p;
+        n = n + 1;
+        p = p->prox;  /* lista duplamente encadeada: prox anda pra frente */
+    }
+    return n;
+}
+
+/* conta quantos programas na BST tem o apresentador indicado (case-insensitive) */
+static void _contar_prog_apr(Programa *r, const char *aprNome, int *count) {
+    if (r != NULL) {
+        _contar_prog_apr(r->esq, aprNome, count);
+        if (str_cmp_i(r->apresentador, aprNome) == 0) {
+            *count = *count + 1;
+        }
+        _contar_prog_apr(r->dir, aprNome, count);
+    }
+}
+
+/* varre todas as categorias da stream e soma quantos programas do apresentador existem */
+static int contar_programas_apresentador_na_stream(const char *streamNome, const char *aprNome) {
+    Stream *s = stream_buscar(RAIZ, streamNome);
+    Categoria *cVet[256];
+    int nCats, i, total;
+
+    if (s == NULL) return 0;
+
+    total = 0;
+    nCats = cat_enumerar(s->categorias, cVet, 256);
+
+    i = 0;
+    while (i < nCats) {
+        _contar_prog_apr(cVet[i]->raizProgramas, aprNome, &total);
+        i = i + 1;
+    }
+    return total;
+}
+
+/* imprime categorias com tipo por extenso */
+static void imprimir_categorias_legivel(Categoria *cabeca) {
+    Categoria *vet[256];
+    int qtd, i;
+    char tipoTxt[TXT_GRD];
+
+    qtd = cat_enumerar(cabeca, vet, 256);
+
+    if (qtd == 0) {
+        printf("(sem categorias)\n");
+    } else {
+        i = 0;
+        while (i < qtd) {
+            tipo_categoria_texto(vet[i]->tipo, tipoTxt, sizeof(tipoTxt));
+            printf("- %s (tipo: %s)\n", vet[i]->nome, tipoTxt);
+            i = i + 1;
+        }
+    }
+}
+
 
 /* ------------------- MENU ------------------- */
 static void menu(void) {
@@ -325,7 +387,7 @@ static void menu(void) {
     printf("10 - Mostrar streams que tem um tipo de categoria\n");
     printf("11 - Mostrar programas de um dia da semana de uma categoria de uma stream\n");
     printf("12 - Mostrar apresentadores de uma stream\n");
-    printf("13 - Mostrar apresentadores de uma categoria (independente da stream)\n");
+    printf("13 - Mostrar apresentadores de uma categoria\n");
     printf("14 - Mostrar dados de um programa de uma categoria de uma stream\n");
     printf("15 - Remover programa de uma categoria de uma stream\n");
     printf("16 - Remover categoria de uma stream (apenas se vazia)\n");
@@ -465,11 +527,17 @@ static void acao_listar_streams(void) {
 
 /* (vi) Mostrar categorias de uma stream */
 static void acao_listar_categorias_stream(void) {
-    Stream *s; printf("\n=== Categorias de uma Stream ===\n");
+    Stream *s; 
+    printf("\n=== Categorias de uma Stream ===\n");
     s = selecionar_stream_por_numero();
-    if (s == NULL) { printf("Cadastre uma stream primeiro.\n\n"); }
-    else { stream_listar_categorias(RAIZ, s->nome); printf("\n"); }
+    if (s == NULL) { 
+        printf("Cadastre uma stream primeiro.\n\n"); 
+    } else { 
+        imprimir_categorias_legivel(s->categorias); 
+        printf("\n"); 
+    }
 }
+
 
 /* (vii) Mostrar todos os programas de uma categoria de uma stream */
 static void acao_listar_programas_cat_stream(void) {
@@ -519,7 +587,7 @@ static void acao_listar_streams_com_categoria(void) {
         printf("(nao ha categorias cadastradas em nenhuma stream)\n\n");
     } else {
         /* lista categorias disponíveis para evitar erro de digitação */
-        printf("Categorias existentes (por nome):\n");
+        printf("Categorias existentes:\n");
         i = 0;
         while (i < qtd) {
             printf(" %d) %s\n", i + 1, cats[i]);
@@ -869,10 +937,14 @@ static void acao_remover_categoria_se_vazia(void) {
             if (c->raizProgramas != NULL) {
                 printf("Nao pode remover: a categoria \"%s\" possui programas cadastrados.\n\n", c->nome);
             } else {
+                char nomeCopia[TXT_GRD];
+                strncpy(nomeCopia, c->nome, sizeof(nomeCopia) - 1);
+                nomeCopia[sizeof(nomeCopia) - 1] = '\0';
+
                 removeu = 0;
                 cat_remover_se_vazia(&s->categorias, c->nome, &removeu);
                 if (removeu == 1) {
-                    printf("Categoria \"%s\" removida da stream \"%s\".\n\n", c->nome, s->nome);
+                    printf("Categoria \"%s\" removida da stream \"%s\".\n\n", nomeCopia, s->nome);
                 } else {
                     printf("Nao foi possivel remover a categoria.\n\n");
                 }
@@ -881,19 +953,86 @@ static void acao_remover_categoria_se_vazia(void) {
     }
 }
 
-/* ------------------- STUBS (vamos implementar depois) ------------------- */
-
-
-/* (xvii) */
+/* (xvii) Alterar a stream atual de um apresentador (só se não houver programas dele na stream atual) */
 static void acao_alterar_stream_atual_apresentador(void) {
-    printf("\n(em desenvolvimento: alterar stream atual do apresentador com as restricoes)\n\n");
+    Apresentador *vetApr[256];
+    int nApr, i, ok, escolha, idx, qtdProg;
+    Apresentador *aprSel = NULL;
+    Stream *novaStream;
+
+    printf("\n=== Alterar Stream Atual do Apresentador ===\n");
+
+    /* listar apresentadores por número */
+    nApr = apr_enumerar_todos(HEAD_APR, vetApr, 256);
+    if (nApr == 0) {
+        printf("(nenhum apresentador cadastrado)\n\n");
+    } else {
+        printf("Escolha o apresentador:\n");
+        i = 0;
+        while (i < nApr) {
+            /* mostramos nome e a stream atual para evitar confusões */
+            printf(" %d) %s", i + 1, vetApr[i]->nome);
+            /* se o campo streamAtual existir, mostre:
+               OBS: nosso projeto usa streamAtual como char[...]; se não quiser arriscar,
+               pode remover as duas linhas abaixo. */
+            printf(" (stream atual: %s)", vetApr[i]->streamAtual);
+            printf("\n");
+            i = i + 1;
+        }
+
+        ok = 0; idx = -1;
+        while (ok == 0) {
+            printf("Numero do apresentador: ");
+            if (scanf("%d", &escolha) != 1) {
+                int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+            } else {
+                if (escolha >= 1 && escolha <= nApr) {
+                    idx = escolha - 1;
+                    ok = 1;
+                } else {
+                    printf("Valor invalido.\n");
+                }
+            }
+            getchar();
+        }
+
+        if (idx >= 0) {
+            aprSel = vetApr[idx];
+
+            /* escolher a nova stream por número */
+            novaStream = selecionar_stream_por_numero();
+            if (novaStream == NULL) {
+                printf("Cadastre uma stream primeiro.\n\n");
+            } else {
+                /* se a nova for igual à atual, nada a fazer */
+                if (str_cmp_i(aprSel->streamAtual, novaStream->nome) == 0) {
+                    printf("O apresentador ja trabalha na stream \"%s\".\n\n", novaStream->nome);
+                } else {
+                    /* checa a RESTRICAO: a stream ATUAL não pode ter programas apresentados por ele */
+                    qtdProg = contar_programas_apresentador_na_stream(aprSel->streamAtual, aprSel->nome);
+                    if (qtdProg > 0) {
+                        printf("Nao pode alterar: ha %d programa(s) na stream \"%s\" apresentados por %s.\n", 
+                               qtdProg, aprSel->streamAtual, aprSel->nome);
+                        printf("Remova esses programas (opcao 15) ou altere o apresentador deles antes.\n\n");
+                    } else {
+                        /* altera a stream atual no cadastro do apresentador */
+                        strncpy(aprSel->streamAtual, novaStream->nome, sizeof(aprSel->streamAtual) - 1);
+                        aprSel->streamAtual[sizeof(aprSel->streamAtual) - 1] = '\0';
+                        printf("Stream atual de \"%s\" alterada para \"%s\".\n\n", aprSel->nome, novaStream->nome);
+                    }
+                }
+            }
+        }
+    }
 }
+
+
 
 /* ------------------- MAIN ------------------- */
 int main(void) {
     int opcao = -1;
 
-    printf("Trabalho ED2 - Q1 (menu alinhado ao enunciado)\n\n");
+    printf("Trabalho ED2 - Q1\n\n");
 
     do {
         menu();
