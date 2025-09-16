@@ -2,13 +2,13 @@
 #define CATEGORIA_H
 
 #include "tipos.h"     // tamanhos de texto e enums (TipoCategoria, TipoDemanda)
-#include "programa.h"  // definição de Programa (ABB por nome)
+#include "programa.h"  // definição de Programa (AVL por nome)
 
 /* Estrutura de uma Categoria na lista circular */
 typedef struct Categoria {
     char nome[TXT_GRD];          // nome da categoria 
     TipoCategoria tipo;          // Notícias, Esporte ou Entretenimento
-    Programa *raizProgramas;     // árvore binária com os programas desta categoria
+    Programa *raizProgramas;     // árvore AVL com os programas desta categoria
     struct Categoria *prox;      // próximo nó da lista circular
 } Categoria;
 

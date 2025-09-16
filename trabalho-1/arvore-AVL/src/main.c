@@ -10,7 +10,7 @@
 #include "../includes/apresentador.h"
 
 /* Globais */
-static Stream *RAIZ = NULL;           /* BST de streams */
+static Stream *RAIZ = NULL;           /* AVL de streams */
 static Apresentador *HEAD_APR = NULL; /* lista duplamente encadeada */
 
 /* ---------- helpers de seleção por número ---------- */
@@ -548,14 +548,14 @@ static void acao_listar_programas_cat_stream(void) {
         if (c == NULL) {
             printf("Cadastre categorias nessa stream primeiro.\n\n");
         } else {
-            /* cabeçalho bonito com tipo + nome da categoria */
+            /* mostra o tipo e nome da categoria */
             tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
             printf("Stream: %s | Categoria: %s (tipo: %s)\n", s->nome, c->nome, tipoTxt);
 
             if (c->raizProgramas == NULL) {
                 printf("nenhum programa cadastrado nesta categoria\n\n");
             } else {
-                /* imprime BST em ordem alfabética pelo nome do programa */
+                /* imprime AVL em ordem alfabética pelo nome do programa */
                 prog_imprimir_inorder(c->raizProgramas);
                 printf("\n");
             }
