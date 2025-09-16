@@ -34,4 +34,6 @@ void stream_listar_categorias(Stream *raiz, const char *nomeStream);
 int stream_enumerar(Stream *raiz, Stream **vet, int max);
 // percorre em-ordem; coloca as streams no vetor até 'max'; retorna quantidade
 
+void stream_imprimir_inorder(Stream *raiz);
+
 #endif
