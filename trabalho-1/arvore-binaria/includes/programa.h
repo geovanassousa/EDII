@@ -20,19 +20,19 @@ typedef struct Programa {
 /* Operações na ABB de Programas */
 Programa* prog_criar(const char *nome, const char *period, int tempoMin,
                      const char *hhmm, int diaSemana, TipoDemanda demanda, const char *apres);
-// cria nó: filhos NULL; campos copiados
+// Cria um novo nó de programa com os dados fornecidos
 
 Programa* prog_buscar(Programa *raiz, const char *nome);
-// busca por nome; retorna nó ou NULL
+// Busca programa por nome; retorna ponteiro para o nó ou NULL se não encontrado
 
 Programa* prog_inserir(Programa *raiz, const char *nome, const char *period, int tempoMin,
                        const char *hhmm, int diaSemana, TipoDemanda demanda, const char *apres, int *inseriu);
-// insere na ABB; sem duplicar; retorna (possível) nova raiz
+// Insere programa na ABB; evita duplicação; retorna possível nova raiz
 
 Programa* prog_remover(Programa *raiz, const char *nome, int *removeu);
-// remove nó por nome; retorna (possível) nova raiz
+// Remove programa por nome; retorna possível nova raiz da árvore
 
 void prog_imprimir_inorder(Programa *raiz);
-// percurso em-ordem (listar em ordem alfabética)
+// Percorre a árvore em ordem (listagem alfabética por nome)
 
 #endif

@@ -18,26 +18,27 @@ Categoria* cat_criar(const char *nome, TipoCategoria tipo) {
 
 int cat_existe(Categoria *cabeca, const char *nome) {
     Categoria *p;
-    int achou = 0;
+    int encontrado = 0; 
     if (cabeca != NULL) {
         p = cabeca;
         do {
-            if (achou == 0) {
+            if (encontrado == 0) {
                 if (str_cmp_i(p->nome, nome) == 0) {
-                    achou = 1;
+                    encontrado = 1;
                 }
             }
             p = p->prox;
-        } while (p != cabeca && achou == 0);
+        } while (p != cabeca && encontrado == 0);
     }
-    return achou;
+    return encontrado;
 }
 
+/* adiciona categoria na lista circular em ordem alfabetica */
 void cat_inserir_ordenado(Categoria **cabeca, const char *nome, TipoCategoria tipo, int *inseriu) {
     Categoria *novo;
     int cmp;
     Categoria *p;
-    int acabou;
+    int chegouNoFim;
 
     if (inseriu != NULL) { *inseriu = 0; }
     if (cabeca == NULL) { return; }
@@ -61,10 +62,10 @@ void cat_inserir_ordenado(Categoria **cabeca, const char *nome, TipoCategoria ti
         novo = cat_criar(nome, tipo);
         if (novo != NULL) {
             p = *cabeca;
-            acabou = 0;
-            while (acabou == 0) {
+            chegouNoFim = 0;
+            while (chegouNoFim == 0) {
                 if (p->prox == *cabeca) {
-                    acabou = 1;
+                    chegouNoFim = 1;
                 } else {
                     p = p->prox;
                 }
@@ -78,14 +79,14 @@ void cat_inserir_ordenado(Categoria **cabeca, const char *nome, TipoCategoria ti
     }
 
     p = *cabeca;
-    acabou = 0;
-    while (acabou == 0) {
+    chegouNoFim = 0;
+    while (chegouNoFim == 0) {
         if (p->prox == *cabeca) {
-            acabou = 1;
+            chegouNoFim = 1;
         } else {
             cmp = str_cmp_i(nome, p->prox->nome);
             if (cmp < 0) {
-                acabou = 1;
+                chegouNoFim = 1;
             } else {
                 p = p->prox;
             }
@@ -99,18 +100,6 @@ void cat_inserir_ordenado(Categoria **cabeca, const char *nome, TipoCategoria ti
     }
 }
 
-void cat_listar(Categoria *cabeca) {
-    Categoria *p;
-    if (cabeca == NULL) {
-        printf("(sem categorias)\n");
-    } else {
-        p = cabeca;
-        do {
-            printf("- %s (tipo %d)\n", p->nome, (int)p->tipo);
-            p = p->prox;
-        } while (p != cabeca);
-    }
-}
 
 int cat_enumerar(Categoria *cabeca, Categoria **vet, int max) {
     Categoria *p;
@@ -128,10 +117,8 @@ int cat_enumerar(Categoria *cabeca, Categoria **vet, int max) {
     return qtd;
 }
 
-#include "../includes/utils.h"  /* str_cmp_i */
 
-/* Remove uma categoria pelo NOME, apenas se estiver sem programas.
-   Lista circular simples, sem return/break/continue dentro de lacos. */
+/* remove categoria apenas se vazia */
 void cat_remover_se_vazia(Categoria **cabeca, const char *nome, int *removeu) {
     Categoria *head, *cur, *prev, *tail;
     int done, found, podeRemover, la;
@@ -147,7 +134,7 @@ void cat_remover_se_vazia(Categoria **cabeca, const char *nome, int *removeu) {
     done = 0;
     found = 0;
 
-    /* percorre até voltar no head */
+    /* percorre ate voltar no head */
     while (done == 0) {
         if (str_cmp_i(cur->nome, nome) == 0) {
             found = 1;
@@ -169,7 +156,7 @@ void cat_remover_se_vazia(Categoria **cabeca, const char *nome, int *removeu) {
         }
 
         if (podeRemover == 1) {
-            /* caso 1: lista com 1 nó */
+            /* caso 1: lista com 1 no */
             if (cur->prox == cur) {
                 *cabeca = NULL;
             } else if (prev == NULL) {
@@ -186,7 +173,7 @@ void cat_remover_se_vazia(Categoria **cabeca, const char *nome, int *removeu) {
                 *cabeca = cur->prox;
                 tail->prox = *cabeca;
             } else {
-                /* removendo nó do meio/final */
+                /* removendo no do meio/final */
                 prev->prox = cur->prox;
                 if (cur == *cabeca) {
                     *cabeca = cur->prox;

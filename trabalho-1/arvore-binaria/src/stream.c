@@ -33,9 +33,6 @@ Stream* stream_buscar(Stream *raiz, const char *nome) {
 
 Stream* stream_inserir(Stream *raiz, const char *nome, const char *site, int *inseriu) {
     int cmp;
-    if (inseriu != NULL && *inseriu != 0) {
-        /* nada */
-    }
     if (raiz == NULL) {
         Stream *novo = stream_criar(nome, site);
         if (novo != NULL) {
@@ -79,34 +76,27 @@ void stream_adicionar_categoria(Stream *raiz, const char *nomeStream,
     if (inseriu != NULL) { *inseriu = 0; }
     s = stream_buscar(raiz, nomeStream);
     if (s != NULL) {
+        /* delega inserção à lista circular de categorias */
         cat_inserir_ordenado(&(s->categorias), nomeCat, tipo, inseriu);
     }
 }
 
-void stream_listar_categorias(Stream *raiz, const char *nomeStream) {
-    Stream *s = stream_buscar(raiz, nomeStream);
-    if (s == NULL) {
-        printf("Stream nao encontrada.\n");
-    } else {
-        cat_listar(s->categorias);
-    }
-}
-/* coleta em ordem (in-order) até "max" elementos; retorna quantidade coletada */
-static void _enum_inorder(Stream *r, Stream **vet, int max, int *qtd) {
-    if (r != NULL && *qtd < max) {
-        _enum_inorder(r->esq, vet, max, qtd);
-        if (*qtd < max) {
-            vet[*qtd] = r;
-            *qtd = *qtd + 1;
+/* coleta streams em ordem */
+static void enumerar_em_ordem(Stream *raiz, Stream **vetor, int maximo, int *quantidade) {
+    if (raiz != NULL && *quantidade < maximo) {
+        enumerar_em_ordem(raiz->esq, vetor, maximo, quantidade);
+        if (*quantidade < maximo) {
+            vetor[*quantidade] = raiz;
+            *quantidade = *quantidade + 1;
         }
-        if (*qtd < max) {
-            _enum_inorder(r->dir, vet, max, qtd);
+        if (*quantidade < maximo) {
+            enumerar_em_ordem(raiz->dir, vetor, maximo, quantidade);
         }
     }
 }
 
 int stream_enumerar(Stream *raiz, Stream **vet, int max) {
     int qtd = 0;
-    _enum_inorder(raiz, vet, max, &qtd);
+    enumerar_em_ordem(raiz, vet, max, &qtd);
     return qtd;
 }

@@ -4,32 +4,30 @@
 #include "tipos.h"     // tamanhos de texto e enums (TipoCategoria, TipoDemanda)
 #include "programa.h"  // definição de Programa (ABB por nome)
 
-/* Nó da lista circular de Categorias (ordenada por nome) */
+/* Estrutura de uma Categoria na lista circular */
 typedef struct Categoria {
     char nome[TXT_GRD];          // nome da categoria 
     TipoCategoria tipo;          // Notícias, Esporte ou Entretenimento
-    Programa *raizProgramas;     // ABB de programas desta categoria
-    struct Categoria *prox;      // próximo nó (lista circular simples)
+    Programa *raizProgramas;     // árvore binária com os programas desta categoria
+    struct Categoria *prox;      // próximo nó da lista circular
 } Categoria;
 
-/* Operações na lista circular de categorias */
+/* Funções para gerenciar categorias */
 Categoria* cat_criar(const char *nome, TipoCategoria tipo); 
-// cria nó de categoria (raizProgramas=NULL; prox aponta para si ao inserir primeira)
+// Cria uma nova categoria
 
 int  cat_existe(Categoria *cabeca, const char *nome);
-// verifica se já existe categoria com esse nome na lista circular
+// Verifica se já existe uma categoria com esse nome
 
 void cat_inserir_ordenado(Categoria **cabeca, const char *nome, TipoCategoria tipo, int *inseriu);
-// insere em ordem alfabética; sem duplicar 
+// Adiciona categoria em ordem alfabética (evita duplicação de nomes)
 
-void cat_listar(Categoria *cabeca);
-// percorre uma volta da lista circular e mostra as categorias
 
 void cat_remover_se_vazia(Categoria **cabeca, const char *nome, int *removeu);
-// remove apenas se 'raizProgramas == NULL'
+// Remove categoria apenas se não possuir programas cadastrados
 
-/* Utilitário */
+/* Funções auxiliares */
 int  cat_enumerar(Categoria *cabeca, Categoria **vet, int max);
-// coleta ponteiros em ordem (uma volta) até 'max'; retorna quantidade
+// Lista todas as categorias em ordem no vetor
 
 #endif

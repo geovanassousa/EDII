@@ -41,7 +41,7 @@ static Stream* selecionar_stream_por_numero(void) {
     i = 0;
     while (i < qtd) {
         printf(" %d) %s (%s)\n", i + 1, lista[i]->nome, lista[i]->site);
-        i = i + 1;
+        i++;
     }
 
     ok = 0;
@@ -74,7 +74,7 @@ static Categoria* selecionar_categoria_por_numero(Categoria *cabeca) {
     i = 0;
     while (i < qtd) {
         printf(" %d) %s\n", i + 1, vet[i]->nome);
-        i = i + 1;
+        i++;
     }
 
     ok = 0; idx = -1;
@@ -140,6 +140,7 @@ static int selecionar_tipo_demanda(TipoDemanda *out) {
     return 1;
 }
 
+/* Lista apresentadores elegíveis cruzando tipo de categoria e stream atual */
 static Apresentador* selecionar_apresentador_elegivel_por_tipo(TipoCategoria tipoCat, const char *nomeStream) {
     Apresentador *vet[256];
     int qtd, i, escolha, ok, idx;
@@ -158,7 +159,7 @@ static Apresentador* selecionar_apresentador_elegivel_por_tipo(TipoCategoria tip
     i = 0;
     while (i < qtd) {
         printf(" %d) %s\n", i + 1, vet[i]->nome);
-        i = i + 1;
+        i++;
     }
 
     ok = 0; idx = -1;
@@ -180,7 +181,7 @@ static Apresentador* selecionar_apresentador_elegivel_por_tipo(TipoCategoria tip
     return selecionado;
 }
 
-/* coleta nomes distintos de categorias existentes em todas as streams */
+/* Coleta nomes de categorias sem duplicatas em todas as streams */
 static int coletar_categorias_distintas_globais(char nomes[][TXT_GRD], int max) {
     Stream *sVet[256];
     Categoria *cVet[256];
@@ -200,17 +201,17 @@ static int coletar_categorias_distintas_globais(char nomes[][TXT_GRD], int max) 
                 if (str_cmp_i(nomes[k], cVet[j]->nome) == 0) {
                     existe = 1;
                 } else {
-                    k = k + 1;
+                    k++;
                 }
             }
             if (existe == 0 && tot < max) {
                 strncpy(nomes[tot], cVet[j]->nome, TXT_GRD-1);
                 nomes[tot][TXT_GRD-1] = '\0';
-                tot = tot + 1;
+                tot++;
             }
-            j = j + 1;
+            j++;
         }
-        i = i + 1;
+        i++;
     }
     return tot;
 }
@@ -234,26 +235,9 @@ static int selecionar_dia_semana(void) {
     return op;
 }
 
-static void dia_semana_texto(int d, char *t, int n) {
-    if (d == 1) strncpy(t, "Dom", n-1);
-    else if (d == 2) strncpy(t, "Seg", n-1);
-    else if (d == 3) strncpy(t, "Ter", n-1);
-    else if (d == 4) strncpy(t, "Qua", n-1);
-    else if (d == 5) strncpy(t, "Qui", n-1);
-    else if (d == 6) strncpy(t, "Sex", n-1);
-    else strncpy(t, "Sab", n-1);
-    t[n-1] = '\0';
-}
 
-static void rstrip(char *s) {
-    int n = (int)strlen(s);
-    while (n > 0 && (s[n-1] == ' ' || s[n-1] == '\t' || s[n-1] == '\r')) {
-        s[n-1] = '\0';
-        n = n - 1;
-    }
-}
 
-/* percorre a BST e imprime programas do dia (inclui Diarios = diaSemana 0) */
+/* lista programas por dia da semana */
 static void _listar_prog_dia(Programa *r, int dia, int *tot) {
     if (r != NULL) {
         _listar_prog_dia(r->esq, dia, tot);
@@ -267,7 +251,7 @@ static void _listar_prog_dia(Programa *r, int dia, int *tot) {
                        r->apresentador);
             } else {
                 char d[16];
-                dia_semana_texto(r->diaSemana, d, sizeof(d));
+                dia_semana_para_texto(r->diaSemana, d, sizeof(d));
                 printf("- %s | %s | %d min | %s (%s) | %s | apres: %s\n",
                        r->nome, r->periodicidade, r->tempoMin, r->horarioInicio, d,
                        (r->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"),
@@ -280,7 +264,7 @@ static void _listar_prog_dia(Programa *r, int dia, int *tot) {
     }
 }
 
-/* enumera programas da BST em ordem alfabetica (in-order) */
+/* enumera programas da árvore */
 static void _prog_enumerar(Programa *r, Programa **vet, int max, int *qtd) {
     if (r != NULL) {
         _prog_enumerar(r->esq, vet, max, qtd);
@@ -292,7 +276,7 @@ static void _prog_enumerar(Programa *r, Programa **vet, int max, int *qtd) {
     }
 }
 
-/* imprime uma linha-resumo do programa para a lista numerada */
+/* mostra resumo do programa */
 static void _print_programa_resumo(const Programa *p) {
     if (p != NULL) {
         if (p->diaSemana == 0) {
@@ -301,7 +285,7 @@ static void _print_programa_resumo(const Programa *p) {
                    (p->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"));
         } else {
             char d[16];
-            dia_semana_texto(p->diaSemana, d, sizeof(d));
+            dia_semana_para_texto(p->diaSemana, d, sizeof(d));
             printf("   %s | %s | %s (%s) | %s\n",
                    p->nome, p->periodicidade, p->horarioInicio, d,
                    (p->demanda == DEMANDA_AO_VIVO ? "Ao Vivo" : "Sob Demanda"));
@@ -309,19 +293,19 @@ static void _print_programa_resumo(const Programa *p) {
     }
 }
 
-/* enumera todos os apresentadores da lista duplamente encadeada */
+/* enumera apresentadores */
 static int apr_enumerar_todos(Apresentador *head, Apresentador **vet, int max) {
     int n = 0;
     Apresentador *p = head;
     while (p != NULL && n < max) {
         vet[n] = p;
-        n = n + 1;
-        p = p->prox;  /* lista duplamente encadeada: prox anda pra frente */
+        n++;
+        p = p->prox;
     }
     return n;
 }
 
-/* conta quantos programas na BST tem o apresentador indicado (case-insensitive) */
+/* conta programas de um apresentador */
 static void _contar_prog_apr(Programa *r, const char *aprNome, int *count) {
     if (r != NULL) {
         _contar_prog_apr(r->esq, aprNome, count);
@@ -332,7 +316,7 @@ static void _contar_prog_apr(Programa *r, const char *aprNome, int *count) {
     }
 }
 
-/* varre todas as categorias da stream e soma quantos programas do apresentador existem */
+/* conta programas do apresentador na stream */
 static int contar_programas_apresentador_na_stream(const char *streamNome, const char *aprNome) {
     Stream *s = stream_buscar(RAIZ, streamNome);
     Categoria *cVet[256];
@@ -346,12 +330,12 @@ static int contar_programas_apresentador_na_stream(const char *streamNome, const
     i = 0;
     while (i < nCats) {
         _contar_prog_apr(cVet[i]->raizProgramas, aprNome, &total);
-        i = i + 1;
+        i++;
     }
     return total;
 }
 
-/* imprime categorias com tipo por extenso */
+/* mostra categorias com tipo */
 static void imprimir_categorias_legivel(Categoria *cabeca) {
     Categoria *vet[256];
     int qtd, i;
@@ -366,7 +350,7 @@ static void imprimir_categorias_legivel(Categoria *cabeca) {
         while (i < qtd) {
             tipo_categoria_texto(vet[i]->tipo, tipoTxt, sizeof(tipoTxt));
             printf("- %s (tipo: %s)\n", vet[i]->nome, tipoTxt);
-            i = i + 1;
+            i++;
         }
     }
 }
@@ -390,8 +374,9 @@ static void menu(void) {
     printf("13 - Mostrar apresentadores de uma categoria\n");
     printf("14 - Mostrar dados de um programa de uma categoria de uma stream\n");
     printf("15 - Remover programa de uma categoria de uma stream\n");
-    printf("16 - Remover categoria de uma stream (apenas se vazia)\n");
-    printf("17 - Alterar a stream atual de um apresentador (com restricoes)\n");
+    printf("16 - Remover categoria de uma stream\n");
+    printf("17 - Alterar a stream atual de um apresentador\n");
+    printf("18 - Mostrar historico de streams de um apresentador\n");
     printf(" 0 - SAIR\n");
     printf("-------------------------------------------------\n");
     printf("Escolha uma opcao: ");
@@ -461,9 +446,16 @@ static void acao_cadastrar_programa(void) {
 
     printf("Periodicidade (ex.: Diario/Semanal/Mensal): ");
     scanf(" %31[^\n]", periodicidade); getchar();
-    rstrip(periodicidade); /* evita 'diario ' com espaco no fim */
+    /* remove espacos em branco do final da string */
+    {
+        int n = (int)strlen(periodicidade);
+        while (n > 0 && (periodicidade[n-1] == ' ' || periodicidade[n-1] == '\t' || periodicidade[n-1] == '\r')) {
+            periodicidade[n-1] = '\0';
+            n = n - 1;
+        }
+    }
 
-    /* Se for Diario, nao perguntamos o dia; guardamos 0 (=vale qualquer dia) */
+    /* se for diario, nao perguntamos o dia; guardamos 0 (=vale qualquer dia) */
     if (str_cmp_i(periodicidade, "Diario") == 0 || str_cmp_i(periodicidade, "Diário") == 0) {
         diaSemArmazenado = 0;
     } else {
@@ -591,7 +583,7 @@ static void acao_listar_streams_com_categoria(void) {
         i = 0;
         while (i < qtd) {
             printf(" %d) %s\n", i + 1, cats[i]);
-            i = i + 1;
+            i++;
         }
 
         ok = 0; idx = -1;
@@ -624,7 +616,7 @@ static void acao_listar_streams_com_categoria(void) {
                     printf("- %s (%s)\n", sVet[i]->nome, sVet[i]->site);
                     alguma = 1;
                 }
-                i = i + 1;
+                i++;
             }
             if (alguma == 0) {
                 printf("(nenhuma stream possui a categoria \"%s\")\n", alvo);
@@ -634,9 +626,9 @@ static void acao_listar_streams_com_categoria(void) {
     }
 }
 /* (ix) Mostrar programas de uma stream em um dia e horário */
-static void _listar_match_prog(Programa *r, int dia, const char *hhmm, const char *nomeCat, int *tot) {
+static void _listar_prog_horario(Programa *r, int dia, const char *hhmm, const char *nomeCat, int *tot) {
     if (r != NULL) {
-        _listar_match_prog(r->esq, dia, hhmm, nomeCat, tot);
+        _listar_prog_horario(r->esq, dia, hhmm, nomeCat, tot);
         if ( (r->diaSemana == dia || r->diaSemana == 0) && strcmp(r->horarioInicio, hhmm) == 0 ) {
             printf("[%s] - %s | %s | %d min | %s | %s | apres: %s\n",
                    nomeCat, r->nome, r->periodicidade, r->tempoMin, r->horarioInicio,
@@ -644,7 +636,7 @@ static void _listar_match_prog(Programa *r, int dia, const char *hhmm, const cha
                    r->apresentador);
             *tot = *tot + 1;
         }
-        _listar_match_prog(r->dir, dia, hhmm, nomeCat, tot);
+        _listar_prog_horario(r->dir, dia, hhmm, nomeCat, tot);
     }
 }
 
@@ -662,7 +654,7 @@ static void acao_listar_programas_por_dia_horario(void) {
         printf("Cadastre uma stream primeiro.\n\n");
     } else {
         dia = selecionar_dia_semana();
-        dia_semana_texto(dia, diaTxt, sizeof(diaTxt));
+        dia_semana_para_texto(dia, diaTxt, sizeof(diaTxt));
 
         printf("Horario (HH:MM): ");
         scanf(" %5[^\n]", hhmm); getchar();
@@ -673,8 +665,8 @@ static void acao_listar_programas_por_dia_horario(void) {
         total = 0;
         i = 0;
         while (i < nCats) {
-            _listar_match_prog(cVet[i]->raizProgramas, dia, hhmm, cVet[i]->nome, &total);
-            i = i + 1;
+            _listar_prog_horario(cVet[i]->raizProgramas, dia, hhmm, cVet[i]->nome, &total);
+            i++;
         }
         if (total == 0) {
             printf("(nenhum programa encontrado nesse dia/horario na stream)\n");
@@ -710,9 +702,9 @@ static void acao_listar_streams_por_tipo_categoria(void) {
                     impressa = 1;            /* imprime cada stream no máximo 1 vez */
                     totalImp = totalImp + 1;
                 }
-                j = j + 1;
+                j++;
             }
-            i = i + 1;
+            i++;
         }
 
         if (totalImp == 0) {
@@ -740,7 +732,7 @@ static void acao_listar_programas_por_dia_semana_cat_stream(void) {
             printf("Cadastre categorias nessa stream primeiro.\n\n");
         } else {
             dia = selecionar_dia_semana();
-            dia_semana_texto(dia, diaTxt, sizeof(diaTxt));
+            dia_semana_para_texto(dia, diaTxt, sizeof(diaTxt));
             tipo_categoria_texto(c->tipo, tipoTxt, sizeof(tipoTxt));
 
             printf("Stream: %s | Categoria: %s (tipo: %s) | Dia: %s\n",
@@ -813,7 +805,7 @@ static void acao_mostrar_dados_programa(void) {
                 while (i < qtd) {
                     printf(" %d) ", i + 1);
                     _print_programa_resumo(vet[i]);
-                    i = i + 1;
+                    i++;
                 }
 
                 ok = 0; idx = -1;
@@ -835,7 +827,7 @@ static void acao_mostrar_dados_programa(void) {
                 if (idx >= 0) {
                     Programa *p = vet[idx];
                     char d[16]; char tipoTxt2[TXT_GRD];
-                    dia_semana_texto(p->diaSemana == 0 ? 0 : p->diaSemana, d, sizeof(d));
+                    dia_semana_para_texto(p->diaSemana == 0 ? 0 : p->diaSemana, d, sizeof(d));
                     tipo_categoria_texto(c->tipo, tipoTxt2, sizeof(tipoTxt2));
 
                     printf("\n--- DADOS DO PROGRAMA ---\n");
@@ -887,7 +879,7 @@ static void acao_remover_programa(void) {
                 while (i < qtd) {
                     printf(" %d) ", i + 1);
                     _print_programa_resumo(vet[i]);
-                    i = i + 1;
+                    i++;
                 }
 
                 ok = 0; idx = -1;
@@ -977,7 +969,7 @@ static void acao_alterar_stream_atual_apresentador(void) {
                pode remover as duas linhas abaixo. */
             printf(" (stream atual: %s)", vetApr[i]->streamAtual);
             printf("\n");
-            i = i + 1;
+            i++;
         }
 
         ok = 0; idx = -1;
@@ -1015,6 +1007,11 @@ static void acao_alterar_stream_atual_apresentador(void) {
                                qtdProg, aprSel->streamAtual, aprSel->nome);
                         printf("Remova esses programas (opcao 15) ou altere o apresentador deles antes.\n\n");
                     } else {
+                        /* adiciona a stream atual ao histórico antes de alterar */
+                        char dataAtual[11];
+                        strcpy(dataAtual, "01/01/2024"); /* data exemplo - poderia ser implementada melhor */
+                        apr_adicionar_historico(aprSel, aprSel->streamAtual, dataAtual, dataAtual);
+                        
                         /* altera a stream atual no cadastro do apresentador */
                         strncpy(aprSel->streamAtual, novaStream->nome, sizeof(aprSel->streamAtual) - 1);
                         aprSel->streamAtual[sizeof(aprSel->streamAtual) - 1] = '\0';
@@ -1026,6 +1023,46 @@ static void acao_alterar_stream_atual_apresentador(void) {
     }
 }
 
+/* (xviii) Mostrar histórico de streams de um apresentador */
+static void acao_mostrar_historico_apresentador(void) {
+    Apresentador *vetApr[256];
+    int nApr, i, ok, escolha, idx;
+
+    printf("\n=== Historico de Streams de um Apresentador ===\n");
+
+    nApr = apr_enumerar_todos(HEAD_APR, vetApr, 256);
+    if (nApr == 0) {
+        printf("(nenhum apresentador cadastrado)\n\n");
+    } else {
+        printf("Escolha o apresentador:\n");
+        i = 0;
+        while (i < nApr) {
+            printf(" %d) %s (stream atual: %s)\n", i + 1, vetApr[i]->nome, vetApr[i]->streamAtual);
+            i++;
+        }
+
+        ok = 0; idx = -1;
+        while (ok == 0) {
+            printf("Numero do apresentador: ");
+            if (scanf("%d", &escolha) != 1) {
+                int ch = 0; while (ch != '\n' && ch != EOF) { ch = getchar(); }
+            } else {
+                if (escolha >= 1 && escolha <= nApr) {
+                    idx = escolha - 1;
+                    ok = 1;
+                } else {
+                    printf("Valor invalido.\n");
+                }
+            }
+            getchar();
+        }
+
+        if (idx >= 0) {
+            apr_listar_historico(vetApr[idx]);
+            printf("\n");
+        }
+    }
+}
 
 
 /* ------------------- MAIN ------------------- */
@@ -1060,6 +1097,7 @@ int main(void) {
             case 15: acao_remover_programa();                      break; /* xv */
             case 16: acao_remover_categoria_se_vazia();            break; /* xvi */
             case 17: acao_alterar_stream_atual_apresentador();     break; /* xvii */
+            case 18: acao_mostrar_historico_apresentador();        break; /* xviii */
             case 0:
                 printf("Saindo do programa...\n");
                 break;
